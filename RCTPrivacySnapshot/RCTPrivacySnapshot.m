@@ -37,14 +37,29 @@ RCT_EXPORT_MODULE();
 - (void)handleAppStateResignActive {
     if (self->enabled) {
         UIWindow    *keyWindow = [UIApplication sharedApplication].keyWindow;
-        UIImageView *blurredScreenImageView = [[UIImageView alloc] initWithFrame:keyWindow.bounds];
+        UIImageView *blurredScreenImageView = nil;
+        NSArray *allPngImageNames = [[NSBundle mainBundle] pathsForResourcesOfType:@"png"
+                                                                       inDirectory:nil];
+        for (NSString *imgName in allPngImageNames){
+            // Find launch images
+            if ([imgName containsString:@"LaunchImage"]){
+                UIImage *img = [UIImage imageNamed:imgName]; //-- this is a launch image
+                // Has image same scale and dimensions as our current device's screen?
+                if (img.scale == [UIScreen mainScreen].scale && CGSizeEqualToSize(img.size, [UIScreen mainScreen].bounds.size)) {
+                    NSLog(@"Found launch image for current device %@", img.description);
+                    blurredScreenImageView = [[UIImageView alloc] initWithImage: img];
+                }
+            }
+        }
         
-        UIGraphicsBeginImageContext(keyWindow.bounds.size);
-        [keyWindow drawViewHierarchyInRect:keyWindow.frame afterScreenUpdates:NO];
-        UIImage *viewImage = UIGraphicsGetImageFromCurrentImageContext();
-        UIGraphicsEndImageContext();
-        
-        blurredScreenImageView.image = [viewImage applyLightEffect];
+        if (blurredScreenImageView == nil) {
+            blurredScreenImageView = [[UIImageView alloc] initWithFrame:keyWindow.bounds];
+            UIGraphicsBeginImageContext(keyWindow.bounds.size);
+            [keyWindow drawViewHierarchyInRect:keyWindow.frame afterScreenUpdates:NO];
+            UIImage *viewImage = UIGraphicsGetImageFromCurrentImageContext();
+            UIGraphicsEndImageContext();
+            blurredScreenImageView.image = [viewImage applyDarkEffect];
+        }
         
         self->obfuscatingView = blurredScreenImageView;
         [[UIApplication sharedApplication].keyWindow addSubview:self->obfuscatingView];
@@ -54,7 +69,7 @@ RCT_EXPORT_MODULE();
 
 - (void)handleAppStateActive {
     if  (self->obfuscatingView) {
-        [UIView animateWithDuration: 0.3
+        [UIView animateWithDuration: 0
                          animations: ^ {
                              self->obfuscatingView.alpha = 0;
                          }
